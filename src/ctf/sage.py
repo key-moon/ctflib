@@ -1,3 +1,2 @@
-from .ptrlib import *
-
+from .pwn import *
 from sage.all import *
