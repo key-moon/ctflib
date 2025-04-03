@@ -1,6 +1,6 @@
 from itertools import accumulate, product
 import random
-from typing import Any, Generator, TypeGuard
+from typing import Any, Generator, Literal, TypeGuard
 from sage.all import matrix, vector, GF, Integer
 from typing import overload
 
@@ -126,7 +126,11 @@ class LinearFunc:
     return matrix(rows)
 
   # evaluation / composition
-  def __call__(self, *val_or_vals: "LinearFunc | int") -> Any:
+  @overload
+  def __call__(self, *val_or_vals: "LinearFunc") -> "LinearFunc": ...
+  @overload
+  def __call__(self, *val_or_vals: int) -> int: ...
+  def __call__(self, *val_or_vals: "LinearFunc | int"):
     vals = form_vals(list(val_or_vals), self.in_bits_details)
     if all([not isinstance(val, LinearFunc) for val in vals]):
       vec = form_vec(vals, self.in_bits_details) # type: ignore
@@ -178,13 +182,13 @@ def interpolate_function(input_or_inputs, input_bit_or_bits, outputs: list[int],
   return LinearFunc(mat, input_bits)
 
 @overload
-def inverse(function_or_functions: list[LinearFunc], output_or_outputs: list[int], all=False) -> list[int]: ...
+def inverse(function_or_functions: list[LinearFunc], output_or_outputs: list[int], all: Literal[False]=False) -> list[int]: ...
 @overload
-def inverse(function_or_functions: LinearFunc, output_or_outputs: int, all=False) -> list[int]: ...
+def inverse(function_or_functions: LinearFunc, output_or_outputs: int, all: Literal[False]=False) -> list[int]: ...
 @overload
-def inverse(function_or_functions: list[LinearFunc], output_or_outputs: list[int], all=True) -> Generator[list[int], Any, list[int] | None]: ...
+def inverse(function_or_functions: list[LinearFunc], output_or_outputs: list[int], all: Literal[True]=True) -> Generator[list[int], Any, list[int] | None]: ...
 @overload
-def inverse(function_or_functions: LinearFunc, output_or_outputs: int, all=True) -> Generator[list[int], Any, list[int] | None]: ...
+def inverse(function_or_functions: LinearFunc, output_or_outputs: int, all: Literal[True]=True) -> Generator[list[int], Any, list[int] | None]: ...
 
 def inverse(function_or_functions, output_or_outputs, all=False) -> list[int] | Generator[list[int], Any, list[int] | None]:
   if isinstance(function_or_functions, LinearFunc) and is_int(output_or_outputs):
@@ -213,16 +217,18 @@ def inverse(function_or_functions, output_or_outputs, all=False) -> list[int] | 
   hom = mat.right_kernel()
   basis = hom.basis()
   if all:
-    for coeffs in product(GF(2), repeat=len(basis)):
-      combo = sum(c * b for c, b in zip(coeffs, basis))
-      new_inp = inp + combo
-      yield [vec_to_int(new_inp[start:stop]) for start, stop in zip(inds[:-1], inds[1:])]
+    def _f():
+      for coeffs in product(GF(2), repeat=len(basis)):
+        combo = sum(c * b for c, b in zip(coeffs, basis))
+        new_inp = inp + combo
+        yield [vec_to_int(new_inp[start:stop]) for start, stop in zip(inds[:-1], inds[1:])]
+    return _f()
   else:
     if len(basis) != 0:
       print("[!] linear equation has non unique solution. put all=True to get all solutions")
     return [vec_to_int(inp[start:stop]) for start, stop in zip(inds[:-1], inds[1:])]
 
-def get_variables(*bits: int, affine=True):
+def get_variables(*bits: int, affine=True) -> tuple[LinearFunc, ...]:
   in_bits_details = (1, *bits) if affine else bits
   variables = []
   prev_bits = 0

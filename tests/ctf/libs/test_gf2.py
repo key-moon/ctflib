@@ -101,8 +101,8 @@ class TestLinearFunc:
         var = get_variable(8, affine=True)
         rotr_result = var.rotr(2)
         rotl_result = var.rotl(2)
-        assert rotr_result(0b11110000) == 0b00111100
-        assert rotl_result(0b00111100) == 0b11110000
+        assert rotl_result(0b11110000) == 0b11000011
+        assert rotr_result(0b11000011) == 0b11110000
     
     def test_composition(self):
         # Test function composition
@@ -144,7 +144,7 @@ class TestInterpolation:
     def test_interpolate_function_with_affine(self):
         # Define a simple affine function to interpolate
         def affine_func(x):
-            return (x + 10) & 0xFF
+            return (x ^ 10) & 0xFF
         
         # Generate input-output pairs
         inputs = [random.randint(0, 255) for _ in range(20)]
@@ -261,7 +261,7 @@ class TestExamples:
         
         # Test multiple iterations
         state = test_input
-        for _ in range(10):  # Reduced from 100 to 10 for faster tests
+        for _ in range(10):
             state = xorshift(state)
         
         assert ((xorshift_2(xorshift_1)) ** 10)(test_input) == state
